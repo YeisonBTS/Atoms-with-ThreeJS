@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>Hello, AR Cube!</title>
+	<!-- include three.js library -->
+	<script src='js/three.js'></script>
+	<!-- include jsartookit -->
+	<script src="jsartoolkit5/artoolkit.min.js"></script>
+	<script src="jsartoolkit5/artoolkit.api.js"></script>
+	<!-- include threex.artoolkit -->
+	<script src="threex/threex-artoolkitsource.js"></script>
+	<script src="threex/threex-artoolkitcontext.js"></script>
+	<script src="threex/threex-arbasecontrols.js"></script>
+	<script src="threex/threex-armarkercontrols.js"></script>
+	<!--<script scr="https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/GLTFLoader.js"></script>-->
+</head>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+
+<!-- 
+  Example created by Lee Stemkoski: https://github.com/stemkoski
+  Based on the AR.js library and examples created by Jerome Etienne: https://github.com/jeromeetienne/AR.js/
+-->
+
+<!-- 
+	Para hacer los marcadores: https://jeromeetienne.github.io/AR.js/three.js/examples/marker-training/examples/generator.html
+
+--> 
+
+<script type="module">
+
+
+        //import {OrbitControls} from './jsm/OrbitControls.js';
+        import {OBJLoader} from './jsm/OBJLoader.js';
+        import {STLLoader} from './jsm/STLLoader.js';
+        import {MTLLoader} from './jsm/MTLLoader.js';
+        //import {GLTFLoader} from './jsm/GLTFLoader.js';
+        import {FirstPersonControls} from './jsm/FirstPersonControls.js';
+
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.114/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/controls/OrbitControls.js';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/GLTFLoader.js';
+        import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/RGBELoader.js';
+
+
+var scene, camera, renderer, clock, deltaTime, totalTime, mixer;
+
+const mixers = [];
+
+var arToolkitSource, arToolkitContext;
+
+var markerRoot1, markerRoot2;
+
+var mesh1;
+
+initialize();
+animate();
+
+function initialize()
+{
+	scene = new THREE.Scene();
+
+	let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
+	scene.add( ambientLight );
+				
+	camera = new THREE.Camera();
+	scene.add(camera);
+
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	clock = new THREE.Clock();
+	deltaTime = 0;
+	totalTime = 0;
+
+	
+	////////////////////////////////////////////////////////////
+	// setup arToolkitSource
+	////////////////////////////////////////////////////////////
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		sourceType : 'webcam',
+	});
+
+	function onResize()
+	{
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
+		{
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	});
+	
+	// handle resize event
+	window.addEventListener('resize', function(){
+		onResize()
+	});
+	
+	////////////////////////////////////////////////////////////
+	// setup arToolkitContext
+	////////////////////////////////////////////////////////////	
+
+	// create atToolkitContext
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: 'data/camera_para.dat',
+		detectionMode: 'mono'
+	});
+	
+	// copy projection matrix to camera when initialization complete
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	});
+
+	////////////////////////////////////////////////////////////
+	// setup markerRoots
+	////////////////////////////////////////////////////////////
+
+	// build markerControls
+	markerRoot1 = new THREE.Group();
+	scene.add(markerRoot1);
+	let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+		type: 'pattern', patternUrl: "data/letterA.patt",
+	})
+
+	let geometry1	= new THREE.CubeGeometry(1,0.01,1);
+	let loader1 = new THREE.TextureLoader();
+	let texture1 = loader1.load( 'images/hidrogeno.jpg', render );
+	let material1	= new THREE.MeshBasicMaterial({
+		//transparent: true,
+		//opacity: 0.5,
+		//side: THREE.DoubleSide
+		map: texture1
+	}); 
+
+	mesh1 = new THREE.Mesh( geometry1, material1 );
+	mesh1.position.y = 0.5;
+	
+	//markerRoot1.add( mesh1 );
+
+		  
+
+	//////OTRO plano////
+	// build markerControls
+	markerRoot2 = new THREE.Group();
+	scene.add(markerRoot2);
+	let markerControls2 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot2, {
+		type: 'pattern', patternUrl: "data/letterB.patt",
+	})
+/*
+	let geometry2	= new THREE.CubeGeometry(1,0.1,1);
+	let loader2 = new THREE.TextureLoader();
+	let texture2 = loader2.load( 'images/oxigeno.jpg', render );
+
+	let material2	= new THREE.MeshBasicMaterial({
+		//transparent: false,
+		//opacity: 0.5,
+		//side: THREE.DoubleSide
+		map: texture2
+	}); 
+	
+	mesh2 = new THREE.Mesh( geometry2, material2 );
+	mesh2.position.y = 0.1;
+	
+	//markerRoot2.add( mesh2 );
+*/	
+
+
+
+	/*
+	var loader = new GLTFLoader();
+              loader.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_017_chlorine/element_017_chlorine.glb', function ( gltf ) {
+
+                //scene.add( gltf.scene );
+				markerRoot1.add( gltf.scene );
+
+                mixer = new THREE.AnimationMixer( gltf.scene );
+                
+                gltf.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+
+
+ 
+              } );
+
+	*/	
+
+	
+
+	/*
+		container = document.createElement( 'div' );
+          document.body.appendChild( container );
+
+          camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 20 );
+          camera.position.set( - 2.8, 0.6, 3.7 );
+
+          //scene = new THREE.Scene();
+          
+          clock = new THREE.Clock();
+
+          new RGBELoader()
+            .setDataType( THREE.UnsignedByteType )
+            .setPath( 'https://threejs.org/examples/textures/equirectangular/' )
+            .load( 'royal_esplanade_1k.hdr', function ( texture ) {
+
+              var envMap = pmremGenerator.fromEquirectangular( texture ).texture;
+
+              //scene.background = envMap;
+              //scene.environment = envMap;
+
+              texture.dispose();
+              pmremGenerator.dispose();
+		*/
+              // model
+
+          
+              var loader = new GLTFLoader();
+              loader.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_017_chlorine/element_017_chlorine.glb', function ( gltf ) {
+
+                //scene.add( gltf.scene );
+				markerRoot1.add( gltf.scene );
+
+                mixer = new THREE.AnimationMixer( gltf.scene );
+
+				mixers.push(mixer);
+                
+                gltf.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+			  var loaderb = new GLTFLoader();
+              loaderb.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_001_hydrogen/element_001_hydrogen.glb', function ( gltf2 ) {
+
+                //scene.add( gltf.scene );
+				markerRoot2.add( gltf2.scene );
+
+                mixer = new THREE.AnimationMixer( gltf2.scene );
+
+				mixers.push(mixer);
+                
+                gltf2.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+     //       } );
+
+          //renderer = new THREE.WebGLRenderer( { antialias: true } );
+          renderer.setPixelRatio( window.devicePixelRatio );
+          renderer.setSize( window.innerWidth, window.innerHeight );
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 0.8;
+          renderer.outputEncoding = THREE.sRGBEncoding;
+          //container.appendChild( renderer.domElement );
+
+          var pmremGenerator = new THREE.PMREMGenerator( renderer );
+          pmremGenerator.compileEquirectangularShader();
+/*
+          controls = new OrbitControls( camera, renderer.domElement );
+          controls.minDistance = 2;
+          controls.maxDistance = 10
+          controls.target.set( 0, 0, - 0.2 );
+          controls.update();
+*/
+          window.addEventListener( 'resize', onWindowResize, false );
+
+
+
+
+}
+
+
+function update()
+{
+	// update artoolkit on every frame
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
+}
+
+
+function render()
+{
+	renderer.render( scene, camera );
+}
+
+
+function animate()
+{
+	requestAnimationFrame(animate);
+	//deltaTime = clock.getDelta();
+	totalTime = deltaTime;
+	//if ( mixer ) mixer.update( deltatime );
+	let delta = clock.getDelta();
+            mixers.forEach((mixer) => {
+                 mixer.update(delta);
+              });
+	update();
+	render();
+}
+
+function onWindowResize() {
+
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+
+renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+/*
+function animate() {
+          
+          requestAnimationFrame( animate );
+          
+          var delta = clock.getDelta();
+          
+          if ( mixer ) mixer.update( delta );
+
+          renderer.render( scene, camera );
+
+        }
+*/
+</script>
+
+</body>
+</html>

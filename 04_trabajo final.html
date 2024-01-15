@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>Hello, AR Cube!</title>
+	<!-- include three.js library -->
+	<script src='js/three.js'></script>
+	<!-- include jsartookit -->
+	<script src="jsartoolkit5/artoolkit.min.js"></script>
+	<script src="jsartoolkit5/artoolkit.api.js"></script>
+	<!-- include threex.artoolkit -->
+	<script src="threex/threex-artoolkitsource.js"></script>
+	<script src="threex/threex-artoolkitcontext.js"></script>
+	<script src="threex/threex-arbasecontrols.js"></script>
+	<script src="threex/threex-armarkercontrols.js"></script>
+	<!--<script scr="https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/GLTFLoader.js"></script>-->
+</head>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+
+
+<script type="module">
+
+
+        //import {OrbitControls} from './jsm/OrbitControls.js';
+        import {OBJLoader} from './jsm/OBJLoader.js';
+        import {STLLoader} from './jsm/STLLoader.js';
+        import {MTLLoader} from './jsm/MTLLoader.js';
+        //import {GLTFLoader} from './jsm/GLTFLoader.js';
+        import {FirstPersonControls} from './jsm/FirstPersonControls.js';
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.114/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/controls/OrbitControls.js';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/GLTFLoader.js';
+        import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/RGBELoader.js';
+
+
+var scene, camera, renderer, clock, deltaTime, totalTime, mixer;
+
+const mixers = [];
+
+
+var arToolkitSource, arToolkitContext;
+
+var markerRoot1, markerRoot2, markerRoot3, markerRoot4, markerRoot5;
+
+var mesh1, mesh2, mesh3, mesh4, mesh5;
+
+var markermol01, gltfmol01, markermol02, gltfmol02;
+
+var mol01, mol02; 
+
+var vmol01 = false;
+
+initialize();
+animate();
+
+function initialize()
+{
+	scene = new THREE.Scene();
+
+	let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
+	scene.add( ambientLight );
+				
+	camera = new THREE.Camera();
+	scene.add(camera);
+
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	clock = new THREE.Clock();
+	deltaTime = 0;
+	totalTime = 0;
+
+	
+	////////////////////////////////////////////////////////////
+	// setup arToolkitSource
+	////////////////////////////////////////////////////////////
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		sourceType : 'webcam',
+	});
+
+	function onResize()
+	{
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
+		{
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	});
+	
+	// handle resize event
+	window.addEventListener('resize', function(){
+		onResize()
+	});
+	
+	////////////////////////////////////////////////////////////
+	// setup arToolkitContext
+	////////////////////////////////////////////////////////////	
+
+	// create atToolkitContext
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: 'data/camera_para.dat',
+		detectionMode: 'mono'
+	});
+	
+	// copy projection matrix to camera when initialization complete
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	});
+
+	////////////////////////////////////////////////////////////
+	// setup markerRoots
+	////////////////////////////////////////////////////////////
+
+	// build markerControls//////////////////////////////
+	//HIDROGENO
+	markerRoot1 = new THREE.Group();
+	scene.add(markerRoot1);
+	let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+		type: 'pattern', patternUrl: "data/pattern-hidrogeno.patt",
+	})
+
+	let geometry1	= new THREE.CubeGeometry(1,0.01,1);
+	let loader1 = new THREE.TextureLoader();
+	let texture1 = loader1.load( 'images/Hydrogen.png', render );
+	let material1	= new THREE.MeshBasicMaterial({
+		map: texture1
+	}); 
+
+	mesh1 = new THREE.Mesh( geometry1, material1 );
+	mesh1.position.y = 0.0;
+	
+	markerRoot1.add( mesh1 );
+
+	//HIDROGENO2
+	
+	markerRoot5 = new THREE.Group();
+	scene.add(markerRoot5);
+	let markerControls5 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot5, {
+		type: 'pattern', patternUrl: "data/letterC.patt",
+	})
+/*
+	let geometry1	= new THREE.CubeGeometry(1,0.01,1);
+	let loader1 = new THREE.TextureLoader();
+	let texture1 = loader1.load( 'images/Hydrogen.png', render );
+	let material1	= new THREE.MeshBasicMaterial({
+		map: texture1
+	}); 
+*/
+	mesh5 = new THREE.Mesh( geometry1, material1 );
+	mesh5.position.y = 0.0;
+	
+	markerRoot5.add( mesh5 );
+		  
+
+	//OXIGENO
+	markerRoot2 = new THREE.Group();
+	scene.add(markerRoot2);
+	let markerControls2 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot2, {
+		type: 'pattern', patternUrl: "data/pattern-oxigeno.patt",
+	})
+
+	let geometry2	= new THREE.CubeGeometry(1,0.1,1);
+	let loader2 = new THREE.TextureLoader();
+	let texture2 = loader2.load( 'images/Oxygen.png', render );
+
+	let material2	= new THREE.MeshBasicMaterial({
+		map: texture2
+	}); 
+	
+	mesh2 = new THREE.Mesh( geometry2, material2 );
+	mesh2.position.y = 0;
+	
+	markerRoot2.add( mesh2 );
+	
+
+	//SODIO
+	markerRoot3 = new THREE.Group();
+	scene.add(markerRoot3);
+	let markerControls3 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot3, {
+		type: 'pattern', patternUrl: "data/pattern-sodio.patt",
+	})
+
+	let geometry3	= new THREE.CubeGeometry(1,0.1,1);
+	let loader3 = new THREE.TextureLoader();
+	let texture3 = loader3.load( 'images/Sodium.png', render );
+
+	let material3	= new THREE.MeshBasicMaterial({
+		map: texture3
+	}); 
+	
+	mesh3 = new THREE.Mesh( geometry3, material3 );
+	mesh3.position.y = 0;
+	
+	markerRoot3.add( mesh3 );
+
+	//CLORO
+	markerRoot4 = new THREE.Group();
+	scene.add(markerRoot4);
+	let markerControls4 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot4, {
+		type: 'pattern', patternUrl: "data/pattern-cloro.patt",
+	})
+
+	let geometry4	= new THREE.CubeGeometry(1,0.1,1);
+	let loader4 = new THREE.TextureLoader();
+	let texture4 = loader4.load( 'images/chlorine.jpeg', render );
+
+	let material4	= new THREE.MeshBasicMaterial({
+		map: texture4
+	}); 
+	
+	mesh4 = new THREE.Mesh( geometry4, material4 );
+	mesh4.position.y = 0;
+	
+	markerRoot4.add( mesh4 );
+
+	///////////H2O
+	markermol01 = new THREE.Group();
+	scene.add(markermol01);
+	let markerControlsmol01 = new THREEx.ArMarkerControls(arToolkitContext, markermol01, {
+		type: 'pattern', patternUrl: "data/letterA.patt",
+	})
+
+	let geometrymol01	= new THREE.CubeGeometry(1,0.1,1);
+	let loadermol01 = new THREE.TextureLoader();
+	let texturemol01 = loadermol01.load( 'images/agua.jpeg', render );
+
+	let materialmol01	= new THREE.MeshBasicMaterial({
+		map: texturemol01
+	}); 
+	
+	mol01 = new THREE.Mesh( geometrymol01, materialmol01 );
+	mol01.position.y = 0;
+	
+	markermol01.add( mol01 );
+
+
+	///////////CLNA
+	markermol02 = new THREE.Group();
+	scene.add(markermol02);
+	let markerControlsmol02 = new THREEx.ArMarkerControls(arToolkitContext, markermol02, {
+		type: 'pattern', patternUrl: "data/letterB.patt",
+	})
+
+	let geometrymol02	= new THREE.CubeGeometry(1,0.1,1);
+	let loadermol02 = new THREE.TextureLoader();
+	let texturemol02 = loadermol02.load( 'images/sal.jpeg', render );
+
+	let materialmol02	= new THREE.MeshBasicMaterial({
+		map: texturemol02
+	}); 
+	
+	mol02 = new THREE.Mesh( geometrymol02, materialmol02 );
+	mol02.position.y = 0;
+	
+	markermol02.add( mol02 );
+
+
+
+
+
+
+        // ATOMOS //////////////
+
+		// HIDDROGENO
+          
+              var loader = new GLTFLoader();
+              loader.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_001_hydrogen/element_001_hydrogen.glb', function ( gltf ) {
+
+                //scene.add( gltf.scene );
+				gltf.scene.position.x = 0.01;
+                gltf.scene.position.y = 1;
+                gltf.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot1.add( gltf.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf.scene );
+
+				mixers.push(mixer);
+                
+                gltf.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+		// HIDDROGENO2
+         
+		var loadere = new GLTFLoader();
+              loadere.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_001_hydrogen/element_001_hydrogen.glb', function ( gltf5 ) {
+
+                //scene.add( gltf.scene );
+				gltf5.scene.position.x = 0.01;
+                gltf5.scene.position.y = 1;
+                gltf5.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+			
+				markerRoot5.add( gltf5.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf5.scene );
+
+				mixers.push(mixer);
+                
+                gltf5.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+
+              } );
+
+
+		//OXIGENO
+
+			  var loaderb = new GLTFLoader();
+              loaderb.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_008_oxygen/element_008_oxygen.glb', function ( gltf2 ) {
+
+				gltf2.scene.position.x = 0.01;
+                gltf2.scene.position.y = 1;
+                gltf2.scene.position.z = 0.1;
+				
+				markerRoot2.add( gltf2.scene );
+
+                mixer = new THREE.AnimationMixer( gltf2.scene );
+
+				mixers.push(mixer);
+                
+                gltf2.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+		
+		//SODIO
+          
+		var loaderc = new GLTFLoader();
+              loaderc.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_011_sodium/element_011_sodium.glb', function ( gltf3 ) {
+
+                //scene.add( gltf.scene );
+				gltf3.scene.position.x = 0.01;
+                gltf3.scene.position.y = 1;
+                gltf3.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot3.add( gltf3.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf3.scene );
+
+				mixers.push(mixer);
+                
+                gltf3.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+			//CLORO
+          
+			var loaderd = new GLTFLoader();
+              loaderd.load( 'https://storage.googleapis.com/search-ar-edu/periodic-table/element_017_chlorine/element_017_chlorine.glb', function ( gltf4 ) {
+
+                //scene.add( gltf.scene );
+				gltf4.scene.position.x = 0.01;
+                gltf4.scene.position.y = 1;
+                gltf4.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot4.add( gltf4.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf4.scene );
+
+				mixers.push(mixer);
+                
+                gltf4.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+		//////////////////////MOLECULAS/////////////////
+
+		////H2O
+
+		var loadermola = new GLTFLoader();
+              loadermola.load( 'models/water.glb', function ( gltfmol01 ) {
+
+                //scene.add( gltf.scene );
+				gltfmol01.scene.position.x = 0.01;
+                gltfmol01.scene.position.y = 1;
+                gltfmol01.scene.position.z = 0.1;
+                gltfmol01.scene.scale.set(0.05,0.05,0.05)
+				//gltfmol01.scene.rotation.y += 1;
+				markermol01.add( gltfmol01.scene );
+				
+				//vmol01 = true;
+
+                mixer = new THREE.AnimationMixer( gltfmol01.scene );
+
+				mixers.push(mixer);
+                
+                gltfmol01.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+		////ClNa
+
+			var loadermolb = new GLTFLoader();
+              loadermolb.load( 'models/salb.glb', function ( gltfmol02 ) {
+
+                //scene.add( gltf.scene );
+				gltfmol02.scene.position.x = 0.01;
+                gltfmol02.scene.position.y = 1;
+                gltfmol02.scene.position.z = 0.1;
+                gltfmol02.scene.scale.set(0.05,0.05,0.05)
+				//gltfmol01.scene.rotation.y += 1;
+				markermol02.add( gltfmol02.scene );
+				
+				//vmol01 = true;
+
+                mixer = new THREE.AnimationMixer( gltfmol02.scene );
+
+				mixers.push(mixer);
+                
+                gltfmol02.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+
+          //renderer = new THREE.WebGLRenderer( { antialias: true } );
+          renderer.setPixelRatio( window.devicePixelRatio );
+          renderer.setSize( window.innerWidth, window.innerHeight );
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 0.8;
+          renderer.outputEncoding = THREE.sRGBEncoding;
+          //container.appendChild( renderer.domElement );
+
+          var pmremGenerator = new THREE.PMREMGenerator( renderer );
+          pmremGenerator.compileEquirectangularShader();
+/*
+          controls = new OrbitControls( camera, renderer.domElement );
+          controls.minDistance = 2;
+          controls.maxDistance = 10
+          controls.target.set( 0, 0, - 0.2 );
+          controls.update();
+*/
+          window.addEventListener( 'resize', onWindowResize, false );
+
+
+
+
+}
+
+
+function update()
+{
+	// update artoolkit on every frame
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
+
+}
+
+
+function render()
+{
+	renderer.render( scene, camera );
+}
+
+
+function animate()
+{
+	requestAnimationFrame(animate);
+	totalTime = deltaTime;
+	let delta = clock.getDelta();
+            mixers.forEach((mixer) => {
+                 mixer.update(delta);
+              });
+/*
+	if ( markermol01.visible )
+	{
+		gltfmol01.scene.rotation.x += 0.1
+	}
+*/			  
+	//if (vmol01 == true) 
+	//	gltfmol01.scene.rotation.x += 1;
+		//gltfmol01.scene.rotation.y += 1;
+	
+	//gltfmol01.scene.position.x += 0.01;
+    //scene.rotation.y += 0.01;
+	update();
+	render();
+}
+
+function onWindowResize() {
+
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+
+renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+
+</script>
+
+</body>
+</html>

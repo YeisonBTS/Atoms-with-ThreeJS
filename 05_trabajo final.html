@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>Hello, AR Cube!</title>
+	<!-- include three.js library -->
+	<script src='js/three.js'></script>
+	<!-- include jsartookit -->
+	<script src="jsartoolkit5/artoolkit.min.js"></script>
+	<script src="jsartoolkit5/artoolkit.api.js"></script>
+	<!-- include threex.artoolkit -->
+	<script src="threex/threex-artoolkitsource.js"></script>
+	<script src="threex/threex-artoolkitcontext.js"></script>
+	<script src="threex/threex-arbasecontrols.js"></script>
+	<script src="threex/threex-armarkercontrols.js"></script>
+	<!--<script scr="https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/GLTFLoader.js"></script>-->
+</head>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+
+
+<script type="module">
+
+
+        //import {OrbitControls} from './jsm/OrbitControls.js';
+        import {OBJLoader} from './jsm/OBJLoader.js';
+        import {STLLoader} from './jsm/STLLoader.js';
+        import {MTLLoader} from './jsm/MTLLoader.js';
+        //import {GLTFLoader} from './jsm/GLTFLoader.js';
+        import {FirstPersonControls} from './jsm/FirstPersonControls.js';
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.114/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/controls/OrbitControls.js';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/GLTFLoader.js';
+        import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.114/examples/jsm/loaders/RGBELoader.js';
+
+
+var scene, camera, renderer, clock, deltaTime, totalTime, mixer;
+
+const mixers = [];
+
+
+var arToolkitSource, arToolkitContext;
+
+var markerRoot = [];
+
+var markerRoot1, markerRoot2, markerRoot3, markerRoot4, markerRoot5;
+
+var mesh0, mesh1, mesh2, mesh3, mesh4, mesh5;
+var mesh6, mesh7, mesh8, mesh9, mesh10, mesh11;
+
+var markermol01, gltfmol01, markermol02, gltfmol02;
+
+var mol01, mol02; 
+
+var vmol01 = false;
+
+const info = [ 'images/Hydrogen.png',
+			'images/Oxygen.png',
+			'images/Sodium.png',
+			'images/chlorine.jpeg',
+			'images/Hydrogen.png',
+			'images/helium.png',
+			'images/lithium.png',
+			'images/magnesium.png',
+			'images/neon.png',
+			'images/manganese.png',
+			'images/meitnerium.png',
+			'images/silicon.png'
+			];
+
+const patron = ["data/pattern-hidrogeno.patt",
+			"data/pattern-oxigeno.patt",
+			"data/pattern-sodio.patt",
+			"data/pattern-cloro.patt",
+			"data/pattern-hidrogeno.patt",
+			"data/pattern-helium.patt",
+			"data/pattern-lithium.patt",
+			"data/pattern-magnesium.patt",
+			"data/pattern-neon.patt",
+			"data/pattern-manganese.patt",
+			"data/pattern-meitnerium.patt",
+			"data/pattern-silicon.patt"
+			];
+
+const modelo = ['models/element_001_hydrogen.glb',
+			'models/element_008_oxygen.glb',
+			'models/element_011_sodium.glb',
+			'models/element_017_chlorine.glb',
+			'models/element_001_hydrogen.glb',
+			'models/element_002_helium.glb',
+			'models/element_003_lithium.glb',
+			'models/element_012_magnesium.glb',
+			'models/element_010_neon.glb',
+			'models/element_025_manganese.glb',
+			'models/element_109_meitnerium.glb',
+			'models/element_014_silicon.glb'
+			];
+
+initialize();
+animate();
+
+function initialize()
+{
+	scene = new THREE.Scene();
+
+	let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
+	scene.add( ambientLight );
+				
+	camera = new THREE.Camera();
+	scene.add(camera);
+
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	clock = new THREE.Clock();
+	deltaTime = 0;
+	totalTime = 0;
+
+	
+	////////////////////////////////////////////////////////////
+	// setup arToolkitSource
+	////////////////////////////////////////////////////////////
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		sourceType : 'webcam',
+	});
+
+	function onResize()
+	{
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
+		{
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	});
+	
+	// handle resize event
+	window.addEventListener('resize', function(){
+		onResize()
+	});
+	
+	////////////////////////////////////////////////////////////
+	// setup arToolkitContext
+	////////////////////////////////////////////////////////////	
+
+	// create atToolkitContext
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: 'data/camera_para.dat',
+		detectionMode: 'mono'
+	});
+	
+	// copy projection matrix to camera when initialization complete
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	});
+
+	////////////////////////////////////////////////////////////
+	// setup markerRoots
+	////////////////////////////////////////////////////////////
+
+	// build markerControls//////////////////////////////
+	//HIDROGENO
+	markerRoot[0] = new THREE.Group();
+	scene.add(markerRoot[0]);
+	let markerControls0 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[0], {
+		type: 'pattern', patternUrl: patron[0],
+	})
+
+	let geometry1	= new THREE.CubeGeometry(1,0.01,1);
+	let loader1 = new THREE.TextureLoader();
+	let texture1 = loader1.load( info[0], render );
+	let material1	= new THREE.MeshBasicMaterial({
+		map: texture1
+	}); 
+
+	mesh1 = new THREE.Mesh( geometry1, material1 );
+	mesh1.position.y = 0.0;
+	
+	markerRoot[0].add( mesh1 );
+
+	//HIDROGENO2
+	
+	markerRoot[4] = new THREE.Group();
+	scene.add(markerRoot[4]);
+	let markerControls4 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[4], {
+		type: 'pattern', patternUrl: patron[4],
+	})
+/*
+	let geometry1	= new THREE.CubeGeometry(1,0.01,1);
+	let loader1 = new THREE.TextureLoader();
+	let texture1 = loader1.load( 'images/Hydrogen.png', render );
+	let material1	= new THREE.MeshBasicMaterial({
+		map: texture1
+	}); 
+*/
+	mesh0 = new THREE.Mesh( geometry1, material1 );
+	mesh0.position.y = 0.0;
+	
+	markerRoot[4].add( mesh0 );
+		  
+
+	//OXIGENO
+	markerRoot[1] = new THREE.Group();
+	scene.add(markerRoot[1]);
+	let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[1], {
+		type: 'pattern', patternUrl: patron[1],
+	})
+
+	let geometry2	= new THREE.CubeGeometry(1,0.1,1);
+	let loader2 = new THREE.TextureLoader();
+	let texture2 = loader2.load( info[1], render );
+
+	let material2	= new THREE.MeshBasicMaterial({
+		map: texture2
+	}); 
+	
+	mesh2 = new THREE.Mesh( geometry2, material2 );
+	mesh2.position.y = 0;
+	
+	markerRoot[1].add( mesh2 );
+	
+
+	//SODIO
+	markerRoot[2] = new THREE.Group();
+	scene.add(markerRoot[2]);
+	let markerControls2 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[2], {
+		type: 'pattern', patternUrl: patron[2],
+	})
+
+	let geometry3	= new THREE.CubeGeometry(1,0.1,1);
+	let loader3 = new THREE.TextureLoader();
+	let texture3 = loader3.load( info[2], render );
+
+	let material3	= new THREE.MeshBasicMaterial({
+		map: texture3
+	}); 
+	
+	mesh3 = new THREE.Mesh( geometry3, material3 );
+	mesh3.position.y = 0;
+	
+	markerRoot[2].add( mesh3 );
+
+	//CLORO
+	markerRoot[3] = new THREE.Group();
+	scene.add(markerRoot[3]);
+	let markerControls3 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[3], {
+		type: 'pattern', patternUrl: patron[3],
+	})
+
+	let geometry4	= new THREE.CubeGeometry(1,0.1,1);
+	let loader4 = new THREE.TextureLoader();
+	let texture4 = loader4.load( info[3], render );
+
+	let material4	= new THREE.MeshBasicMaterial({
+		map: texture4
+	}); 
+	
+	mesh4 = new THREE.Mesh( geometry4, material4 );
+	mesh4.position.y = 0;
+	
+	markerRoot[3].add( mesh4 );
+
+
+	//HELIO
+	markerRoot[5] = new THREE.Group();
+	scene.add(markerRoot[5]);
+	let markerControls5 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[5], {
+		type: 'pattern', patternUrl: patron[5],
+	})
+
+	let geometry5	= new THREE.CubeGeometry(1,0.1,1);
+	let loader5 = new THREE.TextureLoader();
+	let texture5 = loader5.load( info[5], render );
+
+	let material5	= new THREE.MeshBasicMaterial({
+		map: texture5
+	}); 
+	
+	mesh5 = new THREE.Mesh( geometry5, material5 );
+	mesh5.position.y = 0;
+	
+	markerRoot[5].add( mesh5 );
+
+
+	//LITIUM
+	markerRoot[6] = new THREE.Group();
+	scene.add(markerRoot[6]);
+	let markerControls6 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[6], {
+		type: 'pattern', patternUrl: patron[6],
+	})
+
+	let geometry6	= new THREE.CubeGeometry(1,0.1,1);
+	let loader6 = new THREE.TextureLoader();
+	let texture6 = loader6.load( info[6], render );
+
+	let material6	= new THREE.MeshBasicMaterial({
+		map: texture6
+	}); 
+	
+	mesh6 = new THREE.Mesh( geometry6, material6 );
+	mesh6.position.y = 0;
+	
+	markerRoot[6].add( mesh6 );
+
+	//MAGNESIO
+	markerRoot[7] = new THREE.Group();
+	scene.add(markerRoot[7]);
+	let markerControls7 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[7], {
+		type: 'pattern', patternUrl: patron[7],
+	})
+
+	let geometry7	= new THREE.CubeGeometry(1,0.1,1);
+	let loader7 = new THREE.TextureLoader();
+	let texture7 = loader6.load( info[7], render );
+
+	let material7	= new THREE.MeshBasicMaterial({
+		map: texture7
+	}); 
+	
+	mesh7 = new THREE.Mesh( geometry7, material7 );
+	mesh7.position.y = 0;
+	
+	markerRoot[7].add( mesh7 );
+
+
+		//NEON
+		markerRoot[8] = new THREE.Group();
+	scene.add(markerRoot[8]);
+	let markerControls8 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[8], {
+		type: 'pattern', patternUrl: patron[8],
+	})
+
+	let geometry8	= new THREE.CubeGeometry(1,0.1,1);
+	let loader8 = new THREE.TextureLoader();
+	let texture8 = loader6.load( info[8], render );
+
+	let material8	= new THREE.MeshBasicMaterial({
+		map: texture8
+	}); 
+	
+	mesh8 = new THREE.Mesh( geometry8, material8 );
+	mesh8.position.y = 0;
+	
+	markerRoot[8].add( mesh8 );
+
+
+		//MANGANESO
+		markerRoot[9] = new THREE.Group();
+	scene.add(markerRoot[9]);
+	let markerControls9 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[9], {
+		type: 'pattern', patternUrl: patron[9],
+	})
+
+	let geometry9	= new THREE.CubeGeometry(1,0.1,1);
+	let loader9 = new THREE.TextureLoader();
+	let texture9 = loader6.load( info[9], render );
+
+	let material9	= new THREE.MeshBasicMaterial({
+		map: texture9
+	}); 
+	
+	mesh9 = new THREE.Mesh( geometry9, material9 );
+	mesh9.position.y = 0;
+	
+	markerRoot[9].add( mesh9 );
+
+
+			//MEITNERIO
+			markerRoot[10] = new THREE.Group();
+	scene.add(markerRoot[10]);
+	let markerControls10 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[10], {
+		type: 'pattern', patternUrl: patron[10],
+	})
+
+	let geometry10	= new THREE.CubeGeometry(1,0.1,1);
+	let loader10 = new THREE.TextureLoader();
+	let texture10 = loader6.load( info[10], render );
+
+	let material10	= new THREE.MeshBasicMaterial({
+		map: texture10
+	}); 
+	
+	mesh10 = new THREE.Mesh( geometry10, material10 );
+	mesh10.position.y = 0;
+	
+	markerRoot[10].add( mesh10 );
+
+
+	//SILICIO
+	markerRoot[11] = new THREE.Group();
+	scene.add(markerRoot[11]);
+	let markerControls11 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot[11], {
+		type: 'pattern', patternUrl: patron[11],
+	})
+
+	let geometry11	= new THREE.CubeGeometry(1,0.1,1);
+	let loader11 = new THREE.TextureLoader();
+	let texture11 = loader6.load( info[11], render );
+
+	let material11	= new THREE.MeshBasicMaterial({
+		map: texture11
+	}); 
+	
+	mesh11 = new THREE.Mesh( geometry11, material11 );
+	mesh11.position.y = 0;
+	
+	markerRoot[11].add( mesh11 );
+
+
+
+	///////////H2O
+	markermol01 = new THREE.Group();
+	scene.add(markermol01);
+	let markerControlsmol01 = new THREEx.ArMarkerControls(arToolkitContext, markermol01, {
+		type: 'pattern', patternUrl: "data/pattern-water.patt",
+	})
+
+	let geometrymol01	= new THREE.CubeGeometry(1,0.1,1);
+	let loadermol01 = new THREE.TextureLoader();
+	let texturemol01 = loadermol01.load( 'images/agua.jpeg', render );
+
+	let materialmol01	= new THREE.MeshBasicMaterial({
+		map: texturemol01
+	}); 
+	
+	mol01 = new THREE.Mesh( geometrymol01, materialmol01 );
+	mol01.position.y = 0;
+	
+	markermol01.add( mol01 );
+
+
+	///////////CLNA
+	markermol02 = new THREE.Group();
+	scene.add(markermol02);
+	let markerControlsmol02 = new THREEx.ArMarkerControls(arToolkitContext, markermol02, {
+		type: 'pattern', patternUrl: "data/pattern-Salt.patt",
+	})
+
+	let geometrymol02	= new THREE.CubeGeometry(1,0.1,1);
+	let loadermol02 = new THREE.TextureLoader();
+	let texturemol02 = loadermol02.load( 'images/sal.jpeg', render );
+
+	let materialmol02	= new THREE.MeshBasicMaterial({
+		map: texturemol02
+	}); 
+	
+	mol02 = new THREE.Mesh( geometrymol02, materialmol02 );
+	mol02.position.y = 0;
+	
+	markermol02.add( mol02 );
+
+
+
+
+
+        // ATOMOS //////////////
+
+		// HIDDROGENO
+          
+              var loader = new GLTFLoader();
+              loader.load( modelo[0], function ( gltf ) {
+
+                //scene.add( gltf.scene );
+				gltf.scene.position.x = 0.01;
+                gltf.scene.position.y = 1;
+                gltf.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[0].add( gltf.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf.scene );
+
+				mixers.push(mixer);
+                
+                gltf.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+		// HIDDROGENO2
+         
+		var loadere = new GLTFLoader();
+              loadere.load( modelo[4], function ( gltf1 ) {
+
+                //scene.add( gltf.scene );
+				gltf1.scene.position.x = 0.01;
+                gltf1.scene.position.y = 1;
+                gltf1.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+			
+				markerRoot[4].add( gltf1.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf1.scene );
+
+				mixers.push(mixer);
+                
+                gltf1.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+
+              } );
+
+
+		//OXIGENO
+
+			  var loaderb = new GLTFLoader();
+              loaderb.load( modelo[1], function ( gltf2 ) {
+
+				gltf2.scene.position.x = 0.01;
+                gltf2.scene.position.y = 1;
+                gltf2.scene.position.z = 0.1;
+				
+				markerRoot[1].add( gltf2.scene );
+
+                mixer = new THREE.AnimationMixer( gltf2.scene );
+
+				mixers.push(mixer);
+                
+                gltf2.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+		
+		//SODIO
+          
+		var loaderc = new GLTFLoader();
+              loaderc.load( modelo[2], function ( gltf3 ) {
+
+                //scene.add( gltf.scene );
+				gltf3.scene.position.x = 0.01;
+                gltf3.scene.position.y = 1;
+                gltf3.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[2].add( gltf3.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf3.scene );
+
+				mixers.push(mixer);
+                
+                gltf3.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+			//CLORO
+          
+			var loaderd = new GLTFLoader();
+              loaderd.load( modelo[3], function ( gltf4 ) {
+
+                //scene.add( gltf.scene );
+				gltf4.scene.position.x = 0.01;
+                gltf4.scene.position.y = 1;
+                gltf4.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[3].add( gltf4.scene );
+				
+
+                mixer = new THREE.AnimationMixer( gltf4.scene );
+
+				mixers.push(mixer);
+                
+                gltf4.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+	
+			//HELIO
+          
+			var loaderf = new GLTFLoader();
+              loaderf.load( modelo[5], function ( gltf5 ) {
+
+                //scene.add( gltf.scene );
+				gltf5.scene.position.x = 0.01;
+                gltf5.scene.position.y = 1;
+                gltf5.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[5].add( gltf5.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf5.scene );
+
+				mixers.push(mixer);
+                
+                gltf5.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+
+			//LITIUM
+          
+			var loaderg = new GLTFLoader();
+              loaderg.load( modelo[6], function ( gltf6 ) {
+
+                //scene.add( gltf.scene );
+				gltf6.scene.position.x = 0.01;
+                gltf6.scene.position.y = 1;
+                gltf6.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[6].add( gltf6.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf6.scene );
+
+				mixers.push(mixer);
+                
+                gltf6.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+			//MAGNESIO
+          
+			var loaderh = new GLTFLoader();
+              loaderh.load( modelo[7], function ( gltf7 ) {
+
+                //scene.add( gltf.scene );
+				gltf7.scene.position.x = 0.01;
+                gltf7.scene.position.y = 1;
+                gltf7.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[7].add( gltf7.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf7.scene );
+
+				mixers.push(mixer);
+                
+                gltf7.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+			
+			//NEON
+          
+			var loaderi = new GLTFLoader();
+              loaderi.load( modelo[8], function ( gltf8 ) {
+
+                //scene.add( gltf.scene );
+				gltf8.scene.position.x = 0.01;
+                gltf8.scene.position.y = 1;
+                gltf8.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[8].add( gltf8.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf8.scene );
+
+				mixers.push(mixer);
+                
+                gltf8.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+			
+			//MANGANESO
+          
+			var loaderj = new GLTFLoader();
+              loaderj.load( modelo[9], function ( gltf9 ) {
+
+                //scene.add( gltf.scene );
+				gltf9.scene.position.x = 0.01;
+                gltf9.scene.position.y = 1;
+                gltf9.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[9].add( gltf9.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf9.scene );
+
+				mixers.push(mixer);
+                
+                gltf9.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+			
+			//MEITNERIO
+          
+			var loaderk = new GLTFLoader();
+              loaderk.load( modelo[10], function ( gltf10 ) {
+
+                //scene.add( gltf.scene );
+				gltf10.scene.position.x = 0.01;
+                gltf10.scene.position.y = 1;
+                gltf10.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[10].add( gltf10.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf10.scene );
+
+				mixers.push(mixer);
+                
+                gltf10.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+			  			
+			//SILICIO
+          
+			var loaderl = new GLTFLoader();
+              loaderl.load( modelo[11], function ( gltf11 ) {
+
+                //scene.add( gltf.scene );
+				gltf11.scene.position.x = 0.01;
+                gltf11.scene.position.y = 1;
+                gltf11.scene.position.z = 0.1;
+                //gltf.scene.scale.set(0.05,0.05,0.05)
+				markerRoot[11].add( gltf11.scene );
+				
+                mixer = new THREE.AnimationMixer( gltf11.scene );
+
+				mixers.push(mixer);
+                
+                gltf11.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+
+
+		//////////////////////MOLECULAS/////////////////
+
+		////H2O
+
+		var loadermola = new GLTFLoader();
+              loadermola.load( 'models/water.glb', function ( gltfmol01 ) {
+
+                //scene.add( gltf.scene );
+				gltfmol01.scene.position.x = 0.01;
+                gltfmol01.scene.position.y = 1;
+                gltfmol01.scene.position.z = 0.1;
+                gltfmol01.scene.scale.set(0.1,0.1,0.1)
+				//gltfmol01.scene.rotation.y += 1;
+				markermol01.add( gltfmol01.scene );
+				
+				//vmol01 = true;
+
+                mixer = new THREE.AnimationMixer( gltfmol01.scene );
+
+				mixers.push(mixer);
+                
+                gltfmol01.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+		////ClNa
+
+			var loadermolb = new GLTFLoader();
+              loadermolb.load( 'models/salt.glb', function ( gltfmol02 ) {
+
+                //scene.add( gltf.scene );
+				gltfmol02.scene.position.x = 0.01;
+                gltfmol02.scene.position.y = 1;
+                gltfmol02.scene.position.z = 0.1;
+                gltfmol02.scene.scale.set(0.03,0.03,0.03)
+			
+				markermol02.add( gltfmol02.scene );
+				
+				//vmol01 = true;
+
+                mixer = new THREE.AnimationMixer( gltfmol02.scene );
+
+				mixers.push(mixer);
+                
+                gltfmol02.animations.forEach( ( clip ) => {
+                  
+                    mixer.clipAction( clip ).play();
+                  
+                } );
+ 
+              } );
+
+
+
+          //renderer = new THREE.WebGLRenderer( { antialias: true } );
+          renderer.setPixelRatio( window.devicePixelRatio );
+          renderer.setSize( window.innerWidth, window.innerHeight );
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 0.8;
+          renderer.outputEncoding = THREE.sRGBEncoding;
+          //container.appendChild( renderer.domElement );
+
+          var pmremGenerator = new THREE.PMREMGenerator( renderer );
+          pmremGenerator.compileEquirectangularShader();
+/*
+          controls = new OrbitControls( camera, renderer.domElement );
+          controls.minDistance = 2;
+          controls.maxDistance = 10
+          controls.target.set( 0, 0, - 0.2 );
+          controls.update();
+*/
+          window.addEventListener( 'resize', onWindowResize, false );
+
+
+
+
+}
+
+
+function update()
+{
+	// update artoolkit on every frame
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
+}
+
+
+function render()
+{
+	renderer.render( scene, camera );
+}
+
+
+function animate()
+{
+	requestAnimationFrame(animate);
+	totalTime = deltaTime;
+	let delta = clock.getDelta();
+            mixers.forEach((mixer) => {
+                 mixer.update(delta);
+              });
+/*
+	if ( markermol01.visible )
+	{
+		gltfmol01.scene.rotation.x += 0.1
+	}
+*/			  
+	//if (vmol01 == true) 
+	//	gltfmol01.scene.rotation.x += 1;
+		//gltfmol01.scene.rotation.y += 1;
+	
+	//gltfmol01.scene.position.x += 0.01;
+    //scene.rotation.y += 0.01;
+	update();
+	render();
+}
+
+function onWindowResize() {
+
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+
+renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+
+</script>
+
+</body>
+</html>
